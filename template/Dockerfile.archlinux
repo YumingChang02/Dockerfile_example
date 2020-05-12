@@ -1,0 +1,15 @@
+FROM archlinux/base:latest
+
+# add yzu mirror ( Taiwan )
+RUN sed -i '1s/^/Server = http:\/\/ftp.yzu.edu.tw\/Linux\/archlinux\/$repo\/os\/$arch\n/' /etc/pacman.d/mirrorlist
+
+RUN pacman -Syyu --noconfirm && \
+    pacman -Sy --noconfirm \
+      # packages to install
+    && \
+    rm /var/cache/pacman/pkg/*
+
+# preparations
+
+ENTRYPOINT [ "/bin/bash", "-c" ]
+CMD [ "" ]

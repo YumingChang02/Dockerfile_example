@@ -1,0 +1,72 @@
+FROM ubuntu:14.04
+#MAINTAINER
+
+ARG kernelver=4.13.3
+ARG aarchpath=/usr/aarch64/
+
+RUN apt update && apt upgrade -y && \
+    apt install -y \
+        bc \
+        bison \
+        cmake \
+        flex \
+        g++ \
+        git \
+        libattr1-dev \
+        libboost-dev \
+        libcap-dev \
+        libcapture-tiny-perl \
+        libglib2.0-dev \
+        liblua5.2-dev \
+        libpixman-1-dev \
+        libyaml-perl \
+        libxml-simple-perl \
+        nano \
+        openjdk-7-jdk \
+        python-dev \
+        swig \
+        wget \
+        vim \
+        xz-utils && \
+    rm -rf /var/lib/apt/lists/*
+
+# prepare source codes
+WORKDIR /usr/local/nvdla
+RUN git clone -b master https://github.com/nvdla/vp.git && cd vp && git submodule update --init --recursive
+RUN git clone -b master https://github.com/nvdla/hw.git && cd hw && git submodule update --init --recursive
+RUN git clone -b master https://github.com/nvdla/sw.git && cd sw && git submodule update --init --recursive
+RUN [ "/bin/bash", "-c", "set -o pipefail && wget -qO- https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-$kernelver.tar.xz | tar -xJ -C /"]
+
+# prepare systemC library
+RUN mkdir -p /usr/src/systemc-2.3.0a
+WORKDIR /usr/src/systemc-2.3.0a
+RUN [ "/bin/bash", "-c", "set -o pipefail && wget -qO- http://www.accellera.org/images/downloads/standards/systemc/systemc-2.3.0a.tar.gz | tar -zx --strip 1" ]
+RUN mkdir -p /usr/local/systemc-2.3.0 && \
+    mkdir objdir && \
+    cd objdir && \
+    ../configure --prefix=/usr/local/systemc-2.3.0 && \
+    make -j 8 && make install -j 8
+
+# prepare libraries
+RUN mkdir -p /usr/local/nvdla/vp/models/nvdla_hw_cmod/cmod /usr/local/nvdla/vp/images/linux-$kernelver
+RUN ln -s /usr/local/nvdla/hw/cmod/include/ /usr/local/nvdla/vp/models/nvdla_hw_cmod/cmod/
+RUN cp /usr/local/nvdla/sw/prebuilt/linux/* /usr/local/nvdla/vp/images/linux-$kernelver/
+RUN [ "/bin/bash", "-c", "set -o pipefail && wget --no-check-certificate  -qO- \
+    https://releases.linaro.org/components/toolchain/binaries/7.2-2017.11/aarch64-linux-gnu/gcc-linaro-7.2.1-2017.11-x86_64_aarch64-linux-gnu.tar.xz | \
+    tar -xJ -C /" ]
+
+# set compile enviroments
+ENV PATH="/gcc-linaro-7.2.1-2017.11-x86_64_aarch64-linux-gnu/bin:$PATH"
+ENV CROSS_COMPILE="/gcc-linaro-7.2.1-2017.11-x86_64_aarch64-linux-gnu/bin"
+#RUN echo "CROSS_COMPILE=/gcc-linaro-7.2.1-2017.11-x86_64_aarch64-linux-gnu/bin" >> /root/.bashrc
+#RUN echo "export PATH=/gcc-linaro-7.2.1-2017.11-x86_64_aarch64-linux-gnu/bin:$PATH" >> /root/.bashrc
+
+# compile zlib & libpng
+WORKDIR /usr/src
+RUN [ "/bin/bash", "-c", "mkdir zlib && cd zlib && set -o pipefail && wget -qO- https://nchc.dl.sourceforge.net/project/libpng/zlib/1.2.11/zlib-1.2.11.tar.gz | tar -xz --strip 1" ]
+RUN [ "/bin/bash", "-c", "cd zlib && export CC=aarch64-linux-gnu-gcc export AR=aarch64-linux-gnu-ar && ./configure --prefix=$aarchpath && make -j && make install" ]
+RUN [ "/bin/bash", "-c", "mkdir libpng && cd libpng && set -o pipefail && wget -qO- https://nchc.dl.sourceforge.net/project/libpng/libpng16/1.6.37/libpng-1.6.37.tar.gz | tar -xz --strip 1" ]
+RUN [ "/bin/bash", "-c", "cd libpng &&  ./configure --host=arm-linux-gnueabi CC=aarch64-linux-gnu-gcc AR=aarch64-linux-gnu-ar STRIP=aarch64-linux-gnu-strip RANLIB=aarch64-linux-gnu-ranlib CPPFLAGS=\"-I$aarchpath\/include\" LDFLAGS=\"-L$aarchpath\/lib\" --prefix=$aarchpath && make -j && make install" ]
+
+WORKDIR /usr/local/nvdla/
+ENTRYPOINT ["/bin/bash"]

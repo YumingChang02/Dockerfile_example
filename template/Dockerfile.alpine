@@ -1,0 +1,9 @@
+FROM alpine:latest
+RUN apk add --update \
+    # packages to install here
+  && rm -rf /var/cache/apk/*
+
+# preparations
+
+ENTRYPOINT [ "/bin/sh", "-c" ]
+CMD [ "" ]

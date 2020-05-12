@@ -1,0 +1,7 @@
+FROM alpine:latest
+RUN apk add --update \
+    python \
+  && rm -rf /var/cache/apk/*
+COPY calc.py /
+ENTRYPOINT [ "/usr/bin/python", "/calc.py" ]
+CMD [ "1+1" ]

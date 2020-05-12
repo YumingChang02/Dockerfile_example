@@ -1,0 +1,11 @@
+FROM ubuntu:latest
+
+RUN apt update && \
+    apt install -y \
+    # packages to install here
+  && rm -rf /var/lib/apt/lists/*
+
+# preparations
+
+ENTRYPOINT [ "/bin/bash", "-c" ]
+CMD [ "" ]
