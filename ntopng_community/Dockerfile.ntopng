@@ -1,0 +1,19 @@
+FROM ubuntu:18.04
+MAINTAINER ntop.org
+
+ENV TZ=UTC
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+RUN apt-get update && \
+    apt-get -y -q install wget lsb-release gnupg && \
+    wget -q http://apt-stable.ntop.org/18.04/all/apt-ntop-stable.deb && \
+    dpkg -i apt-ntop-stable.deb && \
+    apt-get clean all
+
+RUN apt-get update && \
+    apt-get -y install ntopng 
+
+RUN echo '#!/bin/bash\n/etc/init.d/redis-server start\nredis-cli SET ntopng.prefs.influx_password "tp6wu0zj6dj94xk4g6u04g4"\nredis-cli SET ntonpng.cache.user_scripts.available_system_modules.influxdb_monitor "1"\nredis-cli SET ntopng.prefs.influx_dbname "ntopng"\nredis-cli SET ntopng.prefs.influx_auth_enabled "1"\nredis-cli SET ntopng.prefs.influx_username "demo"\nredis-cli SET ntopng.prefs.timeseries_driver "influxdb"\nredis-cli SET ntopng.prefs.influx_query_timeout "60"\nredis-cli SET ntopng.prefs.ts_post_data_url "http://localhost:8086"\nredis-cli SET ntopng.prefs.ifid_0.is_traffic_mirrored "1"\nredis-cli SET ntopng.prefs.data_retention_days "15"\nntopng /etc/ntopng/ntopng.conf "$@"' > /run.sh && \
+    chmod +x /run.sh
+
+ENTRYPOINT ["/run.sh"]
