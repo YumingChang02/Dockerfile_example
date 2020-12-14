@@ -23,9 +23,14 @@ ENV LC_ALL en_US.UTF-8
 
 # add user
 RUN useradd -rm -s /bin/bash -g root -G sudo -u 1000 -p "$(openssl passwd -1 $PASSWD)" $USERNAME
-USER markchang
+
+# allow sudo
+RUN echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME
 
 #sync repo
+RUN mkdir $WORKSPACE
+RUN chown -R $USERNAME $WORKSPACE
 WORKDIR $WORKSPACE
+USER $USERNAME
 
 ENTRYPOINT [ "/bin/bash" ]
